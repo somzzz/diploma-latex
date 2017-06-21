@@ -1,0 +1,81 @@
+\chapter{Basic Concepts}
+\label{chapter:basic-concepts}
+
+In the previous chapter I presented a short introduction to this project and its main objectives. Before I present a more detailed description of the main goals, it is necessary to discuss some basic concepts on linkers and loaders. This knowledge correlates with the motivation behind the project.
+
+\section{Theoretical Background}
+\label{sec:theor-background}
+
+To begin with, I will make a description of the theory behind linkers and loaders. This includes presenting the different types of linking and loading, the concept of shared libraries and the lazy procedure linkage mechanism.  
+
+\subsection{Linkers and Loaders}
+\label{sub-sec:linkers-and-loaders}
+
+As stated in the previous chapter, the purpose of the \project\ tool is to highlight what linkers and loaders do. Basically, the linker handles symbol and address resolution. The loader copies the executable in the main memory for it to be run \cite{linkers-and-loaders}. It also handles mapping shared libraries into the address space of the executable. Although they perform separate tasks, the functionality of linkers and loaders is intertwined.
+
+Linking can take place at compile time, load time and runtime based on where the required symbols are located. Linking takes place at compile time when resolving symbols from object code libraries or static libraries. This is static linking. The issue of this approach is that large libraries, such as \textit{libc}, would occupy a significant portion of a the address space of each executable.
+
+For this reason, a widely used solution is that of shared libraries which are loaded into the memory only once and multiple executables can link to it simultaneously at load or runtime. The shared library is then mapped into the address space of each process that requires it. Symbol and address resolution at load and runtime are tasks of the dynamic linker and are part of the dynamic linking process.
+
+Loading is also static and dynamic. Static loading is responsible for loading the executable into the main memory for it to be run and mapping the required shared libraries into the address space of the program. It happens at load time, before the program execution is actually started. Dynamic loading takes place at runtime and is invoked by the user manually. It handles mapping shared libraries into the address space of the program.
+
+\labelindexref{Figure}{img:link-load} highlights the differences between static and dynamic linking and loading. It also presents when the library is mapped into the memory (loading) and when the symbols and addresses are resolved (linking) for a call to \textit{printf} and a call to a custom function \textit{X} from a user defined dynamic shared library \textit{Y}.
+\fig[scale=0.5]{src/img/linking-loading.pdf}{img:link-load}{Static vs Dynamic Linking and Loading}
+
+\subsection{Shared Libraries}
+\label{sub-sec:shared-libraries}
+
+Note that a distinction is made between static shared libraries and dynamic shared libraries \cite{linkers-and-loaders}. Static shared libraries are mapped into the memory immediately before the executable is run. Their symbols are resolved immediately after the library is loaded. Address resolution for functions is postponed to the first call to the routine. The mechanism is called \textit{lazy procedure linkage} or \textit{lazy binding}.
+
+On the other hand, dynamic shared libraries are an extremely powerful mechanism as they can be loaded and unloaded at runtime. After this, the dynamic linker resolves the necessary symbols.
+
+Therefore, whether a shared library is static or dynamic depends on how its contents is loaded in the program and how it is accessed.
+
+\subsection{Lazy Procedure Linkage}
+\label{sub-sec:lazy-proc-link}
+
+Dynamically linked programs use lazy procedure linkage with shared libraries. This means that binding to the actual address of the function happens on the first call to the function \cite{linkers-and-loaders}. Before that point, the function address is unknown to the program.
+
+For ELF files on Linux systems, the mechanism by which this is achieved uses the \textit{.got} and \textit{.plt} sections. The \textit{.got}, particularly the \textit{.got.plt} section, is an array of pointers to the functions located in the shared libraries. Initially, these pointers do not indicate the actual address of the functions, but they point to the \textit{.plt} section. The \textit{.plt} section contains entries for each of the functions found in \textit{.got.plt}. Each entry is a stub code which has three roles:
+\begin{itemize}
+\item Jumps to the address indicated by the \textit{.got.plt}. If the address is the actual function routine, then the execution continues as expected. If the address points back to the \textit{.plt} stub, then the next two steps are executed and the dynamic linker is invoked.
+\item Stores the address of the .\textit{got.plt} entry on the stack for the dynamic linker to access and update.
+\item Invokes the dynamic linker which finds the start address of the function code and updates the pointer value in the \textit{.got.plt} section.
+\end{itemize}
+As can be observed, the \textit{.plt} section acts as a trampoline for function calls. It introduces a level of indirection. Note that the last two steps are done only if the address is not valid, meaning only on the first call to the function.
+
+The importance of shared libraries in modern day operating systems is based on the fact that they can be shared between multiple executables/processes ensuring an efficient utilisation of the main memory, as well as a common code base within the system. It is essential for developers to understand the mechanism in order to make use of its powerful features.
+
+\section{Tools of the Trade}
+\label{sec:tools-of-the-trade}
+
+The linker and the loader play an important role in creating a functional executable and moving it into the main memory to be run. Moreover, linking is essential in the case of shared libraries as it allows programs to address code which was not defined in their object files. There is a set on non-dedicated tools for inspecting dynamic linking and loading.
+
+\subsection{Basic Unix Tools}
+\label{sub-sec:basic-unix-tools}
+
+At present, in order to make a preliminary assessment of how the linker and loader work, there are tools which make it possible to examine the contents of an executable before it is run. 
+
+On Unix systems, basic command line tools such as \textit{readelf}\footnote{\url{https://sourceware.org/binutils/docs/binutils/readelf.html}} and \textit{objdump}\footnote{\url{https://sourceware.org/binutils/docs/binutils/objdump.html}} achieve the functionality described above for ELF executables. They can display the sections of a program with their corresponding offsets within the program address space. This can be useful as the loader can keep this arrangement, although this is not guaranteed.
+
+However, they cannot offer detailed information, or none at all, about particular sections of interest in the dynamic linking and loading process, such as the \textit{.plt} or \textit{.got.plt} sections.
+
+In order to properly understand how the linker and loader function and interact, tools which have the possibility to instrument an executable are necessary. At present, these tools are debuggers.
+
+\subsection{GDB}
+\label{sub-sec:gdb}
+
+Unix platforms provide by default \textit{gdb} which is a powerful debugging tool for ELF executables. \textit{Gdb} includes standard commands for displaying the shared libraries used by the program, as well as the offsetted locations of the segments in the running ELF.
+
+However, in order to observe the detailed process of dynamic linking and loading, the user must manually interact with \textit{gdb}. For example, in the case of a function call to a shared library,  the workflow involves setting breakpoints and obtaining the address of the \textit{.plt} section and \textit{.got.plt} entry for function.
+
+This implies that knowledge of the process is a prerequisite in order to follow the subtle changes happening at the time of dynamic linking.
+
+\subsection{LLDB}
+\label{sub-sec:lldb}
+
+Despite its powerful features, \textit{gdb} lacks integration with other software and cannot be included as a module or library in custom programs. It is designed as a manually operated command line tool for the main purpose of debugging.
+
+For this reason, the LLVM project\footnote{\url{http://llvm.org/}} has started developing a high performance debugger which broadly covers the existing \textit{gdb} functionality. \textit{Lldb}\footnote{\url{http://lldb.llvm.org/}} supports command-line debugging, but can also be included as a module in scripting languages such as Python\footnote{\url{https://www.python.org/}}.
+
+Therefore, in order to observe the linking and loading process, \textit{lldb} offers a similar set of steps as \textit{gdb} through its command line feature. However, its main advantage is that its functionality can easily be extended to fit more specific needs.

@@ -1,0 +1,17 @@
+\chapter{Introduction}
+\label{chapter:intro}
+
+Linkers and loaders are an essential component of the software development process. While linking handles symbol resolution within the caller’s object code for object files and shared libraries, loading consists of copying the executable into the main memory in order for it to be run. Clearly, a program could not be run on modern operating systems without the help of these tools. Nevertheless, linking and loading remain obscure to most users as their interaction with the program address space is transparent. The program runs, but we should ask ourselves how and why.
+
+Take the example of an inexperienced user, a computer science freshman student. He is presented with the stages of compilation and he is shown how he can write and run ELF executables. He uses what he sees as basic functions, such as \textit{printf}, which he never defined in his own source files. If pointed out, it might appear quite wondrous to the user how the implementation of \textit{printf} is found, especially in the context of address space layout randomization. Moreover, since the process can only access its own address space, he might wonder how, when and where the library containing \textit{printf}, in this case \textit{libc}, is mapped.
+
+Understanding how a program is run, when its symbols are linked and how the address space is modified is essential for programmers. It is a useful skill in the context of debugging, it can help improve code quality and can prove crucial in the context of security. However it is difficult to observe the effects of the linker and loader using command line debuggers, the default one provided on Linux systems being \textit{gdb}\footnote{\url{https://www.gnu.org/software/gdb/}}. Previous knowledge of their functionality is required, as well as understanding of what is to be debugged. Moreover, I found no tool that can highlight the job of linkers and loaders so as to fit an educational purpose.
+
+\section{Project Description}
+\label{sec:proj}
+
+In order to facilitate understanding of linking and loading for inexperienced users, I created such an educational tool. It provides a user-friendly interface with dedicated functionality for observing linking and loading exclusively.
+
+The main objectives for this tool are to present in a detailed and accessible manner each step of dynamic linking and of dynamic loading. The information is presented as a tutorial where the user can follow a set of steps, read insightful information and observe the process hands-on. Ease of use is achieved by a minimal user interface with intuitive gadgets.
+
+This \project\ tool is thoroughly presented in this paper.

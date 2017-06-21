@@ -1,0 +1,53 @@
+\chapter{Architectural Overview}
+\label{chapter:arch-overview}
+
+As detailed in the preceding chapters, the \project\ tool focuses the capabilities of a debugger, in this case \textit{lldb}, on the observation of and interaction with the dynamic linking and loading process. The focus is achieved through a set of design principles:
+
+\begin{itemize}
+\item \textbf{Create a user-friendly graphical interface.} The user should only interact with the tool through an intuitive and minimal graphical user interface. Unnecessary functionality should not be provided.
+\item \textbf{Ensure an interactive user experience.} The user should be able to control the target executable being inspected by means of the \gui\ and nothing else. The GUI should provide the necessary functionality and be responsive at all times.
+\item \textbf{Extend the functionality of existing tools.} The functionality desired in order to observe the dynamic loader should be contained in a stand-alone module. The code should be reusable as a python module and should extend, not replicate, the existing \textit{lldb} functionality.
+\end{itemize}
+
+The basic design of the \project\ tool is illustrated in \labelindexref{Figure}{img:architecture}. In the following sections I will present details about each component.
+\fig[scale=0.5]{src/img/architecture.pdf}{img:architecture}{Architectural Overview}
+
+\section{Graphical User Interface}
+\label{sec:gui-arch}
+
+The main purpose of the graphical user interface is to create a positive user experience. It achieves this by doing the following:
+
+\begin{itemize}
+\item \textbf{Displaying specific information} in its corresponding panel. For example, there are different panels for displaying the \textit{.got.plt} table and the assembly code for the current frame.
+\item \textbf{Providing a ‘Console Output Panel’}  with detailed instructions and explanations. The user is aware at all times of what is happening in the code.
+\item \textbf{Interactive experience}. The user can restart the program, set breakpoints, continue the execution, alter the program memory to hijack the control flow.
+\item \textbf{Seamless interaction}. The GUI is responsive at all times as it runs on its dedicated thread. The thread it is run on is the main application thread.
+\end{itemize}
+
+\section{Application Processing Thread}
+\label{sec:app-thread-arch}
+
+The application processing thread runs in the background of the user interface. It communicates with the GUI thread through signals and slots. The communication is bidirectional: the GUI sends the processing thread interpreted commands from the user and the processing thread provides the GUI with data to display.
+
+Moreover, this thread is responsible for creating an instance of the \textit{lldb} wrapper module. All the commands received from the GUI are executed by calling the appropriate methods from the wrapper module. The results from the wrapper are then interpreted and sent to the GUI thread to be displayed.
+
+\section{LLDB Wrapper Module}
+\label{sec:lldb-module-arch}
+
+The \textit{lldb} wrapper module is designed to offer stand-alone functionality for exploring dynamic linking and loading. Thus, it is a complementary feature to the existing \textit{lldb} library.
+
+Its functionality includes, but is not limited to:
+\begin{itemize}
+\item \textbf{Collecting and retrieving information related to linking and loading}, such as a detailed list of all the modules loaded in the executable, basic symbol information, the contents of the \textit{.got.plt} section, a list of all the functions in the \textit{.plt} section, as well as the stub of a specific \textit{.plt} section entry or of the entire \textit{.plt} section.
+\item \textbf{Control flow manipulation or instrumentation}. This refers to stepping at specific points of the program execution only relevant to the dynamic linking and loading process:
+\begin{itemize}
+\item Starting / restarting the program
+\item Continuing to the next breakpoint
+\item Setting breakpoints in the \textit{.plt} section
+\item Setting breakpoints on \textit{dlopen}, \textit{dlsym}, \textit{dlclose} calls
+\end{itemize}
+\item \textbf{Printing} the assembly code of a frame or the C source code of a frame if compiled with debug symbols.
+\item \textbf{Altering the contents of a memory location from the program}.
+\end{itemize}
+
+The purpose of the module is to offer functions which directly provide specific information about the dynamic linking and loading process.

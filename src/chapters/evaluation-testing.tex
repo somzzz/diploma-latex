@@ -1,0 +1,86 @@
+\chapter{Evaluation and Testing}
+\label{chapter:eval-test}
+
+Receiving constant feedback is extremely important in order to develop \project\ as a useful educational tool. For this reason the main focus in the testing and evaluation stage was engaging the target users and soliciting feedback. Moreover, this phase was intertwined with the development process in order to comply to the user feedback and shape the final form of the application to meet the target users' needs.
+
+\section{Testing Plan}
+\label{sec:testing-plan}
+
+A testing plan for the \project\ tool included deciding what is relevant for the feedback, who the target users are and how they should be approached.
+
+\subsection{Feedback Points}
+\label{sub-sec:feedback-points}
+
+Relevant feedback points cover:
+\begin{itemize}
+\item \textbf{The \gui\ design.} It should be intuitive and user-friendly.
+\item \textbf{Tool usage.} The user should be able to use the tool without additional support and understand what is happening.
+\item \textbf{Educational purpose.} After using the tool, the user should gain knowledge of what the dynamic linker and loader do.
+\item \textbf{Additional feedback.} This includes any particular user experience comments which can potentially enhance the functionality of the tool.
+\end{itemize}
+
+\subsection{Target Users}
+\label{sub-sec:target-users}
+
+The \project\ tool is intended for both first and second year computer science students and hobbyists who are interested in understanding the functionality of dynamic linkers and loaders. The purpose of the tool is primarily educational.
+
+For this reason, the testing plan involved approaching the target users and allowing them to run and test the application. Further development was done based on the feedback received.
+
+\section{Feedback Received}
+\label{sec:feedback-received}
+
+Feedback was collected from a diverse set of users in order to form a complete image over the utility of the \project\ application and how its objectives have been achieved. The majority of feedback was received from second and third year students which emphasised the actual utility of the tool to the target user. Other students and testers provided valuable insight on potential features and offered improvement suggestions for the existing software. Based on the feedback points mentioned in \labelindexref{Section}{sub-sec:feedback-points}, I will present the most relevant observations received.
+
+\subsection{User Interface}
+\label{sub-sec:user-interface-feedback}
+
+In \labelindexref{Section}{sub-sec:gui} I described the main objectives for the \gui\ and in \labelindexref{Section}{sub-sec:gui-implem} the actual implementation was presented in detail. In order to asses if the interface satisfies the objectives, I evaluated the users' difficulty in using the interface and understanding what each component, or widget, does.
+
+After the first version of \project\ was tested, initial feedback remarked that the \gui\ design was primitive and discouraged users from using the tool. This referred to the simplistic aspect of buttons which only had a text label and were placed in a vertical column to the upper-right side of the window. The vertical placement was not ideal as it wasted a lot of space and left little space for the \textit{Intermediate Stubs Table}. I tackled this feedback by creating a dedicated \textit{Status and Control Bar} with a similar design to that of IDEs such as \textit{Eclipse}\footnote{\url{https://eclipse.org/}} in order to give the user a familiar sensation when using the tool. I changed the buttons to display icons, rather than text, with intuitive images which indicate their functionality. For example, the \textit{Start} button has a green arrow icon with resemblance to the play button in media players. I also added tooltip messages for all the widgets in the bar to indicate what their functionality is. Not only did the tool become more visually appealing with these, but it also left more space for the other widgets to expand and display relevant content.
+
+Another feedback point was that users were not aware that the application has two inspection modes. When asked, the two initial testers mentioned that neither did they know about a second mode, nor did they find the button for switching modes. The button was placed in the window bar in a similar fashion to program menus, such as \textit{File->Save as...}. The first user who was running the tool on Ubuntu found the button when told, whereas the second user could not find it at all on Linux Mint. In order to make it simple and clear for all users, regardless of their operating system, I moved the button to the \textit{Status and Control Bar}.  I turned the label which displayed the current mode into a button which displayed a selection menu when clicked. The ten users who tested the application in its final form were able to switch the application mode without being told about the mode beforehand and without help in locating the widget.
+
+Further feedback on the \gui\ indicated that for most users it was not clear what information each window from the application, such as the Intermediate Stubs Table, was displaying because they had no title. Setting a tooltip message was not an appropriate solution in this case as the user expected to know what the windows were displaying at first glance, without having to move the mouse above the window widgets in turns. Therefore I set an appropriate title for each window, or panel, displayed on the interface and users informed that it was more helpful.
+
+One of the more experienced users remarked that it is difficult for first year students to follow the program execution flow through the assembly code alone. This is because most of them take assembly courses in their second year. Moreover, both second and third year students displayed difficulty in understanding the mapping between the assembly code and the original source code. For this reason, I added an additional \textit{Source Code} tab window to the \textit{Assembly Code} tab window, functional only for executables compiled with debug symbols. It shows the content of the source file and also highlights the current instruction. The users can now look at both the assembly and source code which makes it easier to understand where the program is and what is happening.
+
+Another feedback introduced an issue with programs which require console input. As the program is instrumented with the \textit{lldb} python module, it does not have direct access to its own standard input and standard output. The user interface did not offer means to introduce console input to the program and therefore the program got stuck on the call. The issue was solved by adding a \textit{Standard Input} tab window next to the \textit{Console Output} tab window in the \gui\ . Thus, when the user gets stuck on a blocking \textit{getchar}\footnote{\url{http://linux.die.net/man/3/getchar}} or \textit{scanf}\footnote{\url{http://man7.org/linux/man-pages/man3/scanf.3.html}} call, he can introduce the values required from the \textit{Standard Input} window and the program resumes execution. When the user introduces the input, the \gui\ spawns an extra python thread. In this way, the \gui\ thread is not affected. This new thread puts the user data to the standard input of the executable, which runs on the background thread, and allows it to exit the blocking call.
+
+Further on, I added a \textit{Standard Output} tab window to allow the user to follow the output of the executable, but also to distinguish it from the \textit{Console Output} messages which have an informative purpose. The window is complementary to the \textit{Standard Input} one.
+
+The changes described above resulted in a positive final feedback. Users described the \gui\ of \project\ as being intuitive and straight-forward. This indicates that the objective of creating an easy-to-use tool was achieved.
+
+\subsection{Tool Usage}
+\label{sub-sec:tool-usage-feedback}
+
+In the previous chapters I argued that \project\ was designed to be intuitive and self-explanatory and that an inexperienced user should be able to use it without previous knowledge and without assistance.
+
+Overall feedback revealed that despite the straight-forward use of the interface, five out of twelve users were not certain what they were expected to do at first glance. They mentioned that only after a couple of consecutive runs did they understand what the tool was doing. To solve this problem, I created the \textit{Help} button which offers a crash-course on the theory of dynamic linking and loading, as well as a short description of what each application mode does. As a result, users instinctively clicked \textit{Help} and read the instructions when they first used the program. They figured out more easily what they were expected to do with the tool, where to look and how to interpret the data displayed.
+
+One feedback mentioned that the tool had a confusing behaviour on calls to blocking functions. The program tested was the code for a C server with blocking functions such as \textit{accept}\footnote{\url{http://man7.org/linux/man-pages/man2/accept.2.html}} and \textit{read}\footnote{\url{http://man7.org/linux/man-pages/man2/read.2.html}}. After further enquiries, I noticed that the behaviour was due to calls to blocking functions which led to the tool being stuck in the debugger \textit{continue} call. As the user interface was updated only on return from \textit{continue}, the user saw nothing happen on the interface and believed the program had crashed. However, in that particular case, it was an \textit{accept} call from the code of server. Connecting with \textit{telnet}\footnote{\url{http://linux.die.net/man/1/telnet}} from a terminal window allowed the program to resume execution and display the proper information on the user interface.
+
+The simple and intuitive design of the \gui\ helped users figure out how to use the tool in the majority of situations. The feedback received on tool usage was tackled with a short tutorial on dynamic linking and loading and this proved to be an effective solution.
+
+\subsection{Educational Purpose}
+\label{sub-sec:educational-purpose-feedback}
+
+The most important objective of the project is to create a simple and straight-forward inspection tool for dynamic linking and loading which is adequate for inexperienced users interested in learning about these processes. In order to asses if \project\ properly emphasises the essential aspects of dynamic linking and loading, I have analysed the feedback received from the users.
+
+Initial feedback revealed that even though users could easily use the tool, they did not understand what dynamic linking and dynamic loading were. As their theoretical background was missing, they assumed they had to rely on external sources to find out more information, rather than use the \project\ tool alone. For example, one of the first testers mentioned he had opened twenty browser tabs with information on dynamic linking and loading in order to fully understand what was happening. This problem was fixed when I created the \textit{Help} section which offered a crash-course on dynamic linking, dynamic loading and lazy procedure linkage. This short introduction proved helpful as further feedback revealed the users had no need to seek information from other sources. By reading the \textit{Help} manual, users gain the basic theoretical background necessary to use the tool and understand the concepts it presents. 
+
+The most recent feedback revealed that all the users who reviewed the \project\ tool agreed that what is happening is simple and clear. They properly distinguished between dynamic linking and dynamic loading by using the two different inspection modes. The \textit{Help} manual offers a basic theoretical understanding of the process, whereas the inspector itself helps deepen the knowledge with a hand-on tutorial on dynamic linking and dynamic loading.
+
+Moreover, ten out of twelve users confirmed that they would not have been able step through the entire process by themselves, without using the tool and with no previous knowledge, as it was too complicated. There are two main reasons they presented. The first one is that they are not familiar enough with debugger tools such a \textit{gdb} and, in most cases, the complexity of the command line debugger discouraged them from attempting to use it. It is important to notice that this feedback belongs not only to first year students, but also to third year ones. Secondly, they had no knowledge of the dynamic linking and dynamic loading processes and, as a result, they did not know what they should look at in the debugger output and what each step meant. This validates the motivation for creating this project and the final positive feedback supports that the main objectives have been achieved.
+ 
+\subsection{Additional Feedback}
+\label{sub-sec:additional-feedback}
+
+Aside from the main feedback points which validate the main purpose of the project, users have presented valuable feedback regarding the functionality of the project and compatibility with their systems.
+
+Feedback revealed that seven out of twelve users had 64 bit systems which made the \project\ tool unusable for them. In order to test the tool, they had to use a virtualization solution such a VmWare\footnote{\url{http://www.vmware.com/}} and install a 32 bit machine. This process is cumbersome and might discourage users who do not have virtualization software already installed on their system from using the tool. For this reason, most users requested that further development includes support for 64 bit machines. This is discussed in \labelindexref{Chapter}{chapter:concl-further}.
+
+Moreover feedback pointed out that there were issues with the \textit{lldb python module} on more recent 32 bit systems such as \textit{Ubuntu 16.04} \footnote{\url{http://releases.ubuntu.com/16.04/}}. On this particular system, lldb 3.6 does not recognize the symbols of the functions from the \textit{.plt} section and therefore does not properly return them to the tool. Therefore the user cannot set any breakpoints in the \textit{Dynamic Linking / Lazy Binding Inspector} mode. Additional testing proved that the \textit{lldb-3.6} debugger has the same behaviour in the command line on \textit{Ubuntu 16.04}. I verified that the same compiler version, \textit{gcc 4.8.4}\footnote{\url{https://gcc.gnu.org/gcc-4.8/}}, was used to generate the executable and that the executable had the same format and the same assembly instructions as the one on the development platform, \textit{Ubuntu 14.04}. Further enquires need to be made into this issue and a possible transition to a newer version of \textit{lldb} which is compatible with all 32 bit systems should be considered.
+
+Valuable feedback was also received with regard to the project repository on Github\footnote{\url{https://github.com/somzzz/dyninspector}}. All users mentioned that the installation process was simple and clear by means of the \textit{setup} script provided. They also appreciated the instructions on how to deal with possible issues during the installation process. Two users mentioned that the repository lacked a project description which made it unclear what the purpose of the \project\ tool was. To solve this issue, I added a short description in the project \textit{readme} file.
+
+Overall, the feedback revealed that \project\ has made an impact in the sense that its goal of presenting dynamic loading and dynamic linking in an accessible manner to inexperienced users has been completed.

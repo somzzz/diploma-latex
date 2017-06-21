@@ -1,0 +1,221 @@
+\chapter{Implementation}
+\label{chapter:implementation}
+
+Previously I described the overall architecture of the \project\ tool, presenting the main components and their roles. In the current chapter I offer technical details about the actual implementation of each part and their interaction.
+
+\section{Building Blocks}
+\label{sec:building-blocks}
+
+This section presents the hardware and software requirements of the project, as well as a detailed description of all modules used.
+
+\subsection{Hardware Requirements}
+\label{sub-sec:hardware-req}
+
+The \project\ tool aims to offer support for all 32 bit Linux platforms with the Intel x86 architecture. It is not compatible with 64 bit systems. Hardware dependencies are imposed by a tight coupling with the Instruction Set Architecture (\textit{ISA}) of Intel x86 systems \cite{x86-fundamentals}.
+
+Firstly, the analysis is done based on the format and structure of the assembly code. Changing the architecture also changes the assembly instruction set to one the tool does not understand. Take for example a simple conditional jump, if two values are not equal, the x86 ISA defines a \textit{jne} instruction, whereas the ARM ISA \cite{arm-manual} offers the \textit{bne} instruction. Searching for a \textit{jne} instruction on an ARM architecture will result in an incorrect functioning of the tool.
+
+Secondly, the tool requires direct access to registers which must be accessed by name. A simple use case is obtaining the return value of a function. On the x86 architecture, this is passed through the \textit{eax} register, while ARM uses the \textit{r0} register for this purpose. Since each architecture uses its distinct set of registers, they are not compatible.
+
+Therefore hardware requirements are due to the low-level nature of the \project\ project as it needs to systematically disassemble and analyse executables. In order to make the project compatible with other architectures, further development is required.
+
+\subsection{Software Requirements}
+\label{sub-sec:software-req}
+
+The \project\ tool is developed for 32 bit Linux systems. This choice is justified by the fact that Linux is an open-source community, as is the current project which makes a contribution in the form of a piece of software. 
+
+The project is strongly based on the existing \textit{llvm} infrastructure and makes use of the \textit{lldb} debugger to instrument the execution of a program and collect relevant data. Therefore the requirements for the \textit{llvm} framework must also be satisfied in order to successfully use the \project\ tool. The \textit{lldb} version used in by the tool may render it incompatible with newer 32 bit Linux systems, such as Ubuntu 16.04, as feedback has revealed.
+
+Another requirement is to have minimum Python version 2.7 on the system, as well as the Python Qt bindings module, PySide, with a minimum version of 1.2.1. Any system with newer versions of the mentioned software needs to make sure that they are backwards compatible with the ones presented here.
+
+\subsection{Development Environment}
+\label{sub-sec:develop-envion}
+
+To achieve the desired functionality, the \project\ tool is designed and built upon the following software support and hardware specifications:
+
+\begin{itemize}
+\item \textbf{OS platform}: Ubuntu 14.04  LTS
+\item \textbf{OS type}: 32 bit / i686
+\item \textbf{Target executable format}: ELF 32-bit LSB  executable, Intel 80386
+\item \textbf{Programming language}: \textbf{python 2.7}
+\item \textbf{Graphical User Interface}: \textbf{PySide} python module \textbf{1.2.1}
+\begin{itemize}
+\item Based on \textbf{QtCore 4.8.6}
+\end{itemize}
+\item \textbf{lldb}: \textbf{lldb} python module \textbf{3.6}
+\item \textbf{Dependencies}: \textbf{llvm-3.6} and \textbf{clang 3.6}
+\end{itemize}
+
+As can be seen, the tool is based on the \textit{lldb} debugger which was mentioned in \labelindexref{Section}{sub-sec:lldb}. The purpose of \project\ is to extend the \textit{lldb} features to support specific interaction methods for studying the dynamic loader, while providing a user-friendly interface.
+
+
+\section{Implementation Details}
+\label{sec:implem-details}
+
+The \project\ tool is written in the Python scripting language. It is structured on two Python threads, one for the \gui\ and one for background computations. The choice for using two threads is justified by the following two reasons:
+\begin{itemize}
+\item The \gui\ is required to run on a dedicated thread in order to be responsive. The other computations require a background thread.
+\item There are no intensive background computations which makes one thread alone suitable for the task.
+\end{itemize}
+
+\subsection{Graphical User Interface}
+\label{sub-sec:gui-implem}
+
+As was previously described, the \gui\ is the means by which the user interacts with the application. Its design has three main goals:
+
+\begin{itemize}
+\item \textbf{Display relevant information to the user}, such as:
+\begin{itemize}
+\item The code currently begin executed
+\item The information stored in the Global Offset Table (\textit{got} on Unix) for each function
+\item Explanatory messages about the linking and loading process
+\end{itemize}
+\item \textbf{Offer an interactive interface to the user} by:
+\begin{itemize}
+\item Allowing the user to step through the program
+\item Allowing the user to restart the program
+\item Allowing the user to set breakpoints for specific functions
+\item Giving the user access to the standard input and output of the executable
+\item Allowing the user to alter the memory content of the \textit{.got.plt} section
+\end{itemize}
+\item \textbf{Be responsive.} The \gui\ communicates with the background seamlessly, without disturbing the user.
+\end{itemize}
+
+To achieve these goals, the \gui\ is implemented using Python PySide bindings to Qt. PySide offers widgets which are classified within this application as either passive or active. Passive widgets are intended to display information to the user and can only receive commands from the background of the application. A text panel is an example of a passive widget. Active widgets can be interacted with by the user. They offer callback functions which are called on each interaction and which send commands to the background of the application. A button is an example of an active widget.
+
+The \gui\ is run on the application main thread and the background computations are run on a different thread. The \gui\ registers and sends commands to the background thread. The thread runs the commands and notifies the GUI thread to update its information. This ensures responsiveness.
+
+As stated in \labelindexref{Chapter}{sub-sec:gui}, it is important that the \gui\ differentiates between dynamic linking, along with lazy binding, and dynamic loading. For this purpose there are two different application modes which I will detail below.
+
+\paragraph{Dynamic Linking / Lazy Binding Mode.}
+
+The Dynamic Linking / Lazy Binding mode highlights the dynamic linking process, more specifically address resolution with the lazy binding mechanism. Basically it shows what happens when a function from a dynamically shared library is called from a program.
+
+\labelindexref{Figure}{img:gui-link} shows the design of the \gui\ for the Dynamic Linking / Lazy Binding mode. As can be seen, it contains a control and status bar, a window for displaying the code, a table with the \textit{.got.plt} pointer values (or \textit{intermediate stubs} table), a sections table for currently loaded modules and a console output window.
+\fig[scale=0.3]{src/img/gui-link.pdf}{img:gui-link}{Graphical User Interface - Dynamic Linking / Lazy Binding Mode}
+
+\textbf{The Status and Control bar} offers a set of buttons for loading an executable, starting or continuing the inspection and a drop-down for selecting a breakpoint. The buttons have intuitive icons to describe their purpose, as well as text tooltips when the user hovers the mouse over them. On the right side of the bar, there is a button for switching the application mode. The current mode is indicated by the actual selection. Next to the right there is the \textit{Debug Symbols Indicator}. This helps the user see whether the executable was compiled with debug symbols or not by hovering over the icon or by visual confirmation. The icon is either coloured or gray depending on the presence of debug symbols. To the far right, \textit{the Status and Control bar} has a help window which opens a pop-up window with summarised information about the dynamic linking and dynamic loading processes structured on tabs.
+
+\textbf{The Assembly Code window} displays the assembly code for the current frame of the program. The current instruction, as indicated by the instruction pointer, is highlighted with a different colour. Similarly, \textbf{the Source Code window} displays the original C code for the current frame. I considered this was useful for students who do not have experience with x86 assembly in order to follow the program execution more easily.
+
+\textbf{The Intermediate Stubs Address Table} lists all entries from the \textit{.plt} section of the executable. For each function, the location of the \textit{.got.plt} entry is displayed in the \textit{Intermediate Stubs Location Address} column and the routine pointer value found at that location can be seen in the \textit{Function Address} column.
+
+\textbf{Executable Sections Table} lists all the modules loaded in the current executable and displays the sections relevant to the dynamic linking process for each module. These are \textit{.text}, where the code is, \textit{.plt}, where the intermediate stubs are, \textit{.got}, where the pointer values are located and \textit{.data}. We can trace the program execution flow as it jumps through some of these sections by following the instruction pointer, which is displayed in the last column of the table. The row of the section where the current instruction is is highlighted in the table in order to make it more visible.
+ 
+\textbf{The Console Output window} offers descriptive messages at each step. The messages are generated by the background thread based on the status of the debugging process.
+
+\textbf{The Standard Input window} allows the user to introduce a keyboard input for the program. \textbf{The Standard Output window} shows the output of the target executable.
+
+\paragraph{Dynamic Loading Mode.}
+
+The Dynamic Loading mode highlights memory mappings for shared libraries and presents the user initiated function call mechanism for functions in shared libraries. Basically it traces \textit{dlopen}, \textit{dlsym} and \textit{dlclose} calls.
+
+\labelindexref{Figure}{img:gui-load} shows the design of the \gui\ for the Dynamic Loading mode. It is similar to the Dynamic Linking mode in order to help the user get accustomed to it.
+\fig[scale=0.31]{src/img/gui-load.pdf}{img:gui-load}{Graphical User Interface - Dynamic Loading Mode}
+
+The main differences are detailed below:
+\begin{itemize}
+\item \textbf{The function selector was removed from the status and control bar.} The nature of dynamic loading prevents us from knowing what symbols will be called dynamically until the call is actually made. For this reason, it is not possible to offer the user a list of functions to set breakpoints on. As the user cannot set breakpoints, the mode automatically stops on \textit{dlopen}, \textit{dlsym} and \textit{dlclose} calls. Breakpoints to calls to functions from shared libraries are set automatically based on the return value of \textit{dlsym} calls.
+\item \textbf{The Intermediate Stubs Address Table was removed.} This is only relevant for dynamic linking and lazy binding.
+\item \textbf{The Executable Sections Table was simplified to the Executable Modules / Shared Libraries Table}. Dynamic Loading is not concerned with particular sections of modules, only with their address mappings.
+\end{itemize}
+
+Overall, the \gui\ has a simple and intuitive aspect which allows the user to use it without previous experience. Moreover, it offers all the functionality necessary for analysing the dynamic linking and dynamic loading processes with a minimum complexity by use of basic interactive widgets.
+
+\subsection{Background Work}
+\label{sub-sec:background-work-implem}
+
+As mentioned in the previous section, the application runs on two threads. One is responsible with managing the \gui\ and the other with handling background computations.
+
+In this particular case, background computations consist of:
+\begin{itemize}
+\item \textbf{Handling a debugger instance which runs an ELF executable.} This means sending commands to it and obtaining status information about the process being run. The debugger is an instance of the \textit{lldb} Python module. It is wrapped in a stand-alone Python module which extends the basic functionality of \textit{lldb} to include support for linking and loading analysis.
+\item \textbf{Processing the information from the debugger instance.} This step is necessary as the debugger instance offers the same amount of information as a command line debugger. However, the information is structured in appropriate data objects and is not a text string. The purpose of the current application is to provide selective information to the user. The parsed data is forwarded to the \gui\ thread.
+\end{itemize}
+
+The background thread acts as an intermediate between the \gui\ and \textit{lldb} debugger. It keeps an internal state in order to correctly identify the state of the process currently run in the debugger. The state is changed based on the feedback from the debugger and the input from the \gui\ (take for example a restart command from the user).
+
+The background thread acts as a state-machine in order to follow the debugging process necessary for analysing dynamic linking and loading. The transition between the states is done when the user clicks the \textit{Start} or \textit{Continue} buttons from the GUI.
+
+\subsection{Communication and Synchronization}
+\label{sub-sec:comm-sync-implem}
+
+The applications threads communicate using Python \textit{Signals and Slots} from \textit{PySide}. It is a mechanism for user-defined callbacks. Each thread registers, or \textit{connects}, a \textit{slot} function to a \textit{signal} object. The purpose of this function is to handle a certain event. For the signal, the event is \textit{emitted} on demand.
+
+\labelindexref{Figure}{img:signals-slots} illustrates the signals and slots mechanism.
+\fig[scale=0.6]{src/img/signals-slots.pdf}{img:signals-slots}{PySide Signals and Slots}
+
+The background thread defines all signals for communicating with the GUI thread. In this way, the functionality remains independent of the actual implementation of the GUI. The required signals represent an interface to the background of the application.
+
+There are two kind of signals defined:
+\begin{itemize}
+\item \textbf{Backend to frontend signals.} These signals emit events from the background thread to the user interface thread. The events consist of updating the \gui\ widgets with the given data.
+\item \textbf{Frontend to backend signals.} These signals emit events from the \gui\ thread to the background thread. They represent commands from the user to the application.
+\end{itemize}
+
+The response of the background thread are instantaneous due to the performance of the \textit{lldb} module and, thus, further synchronization is not necessary at this stage.
+
+\subsection{LLDB Wrapper Module}
+\label{sub-sec:lldb-wrap-implem}
+
+It was mentioned in \labelindexref{Section}{sub-sec:background-work-implem} that the background thread creates and interacts with an instance of the \textit{lldb} debugger. The instance is not used directly, but through a wrapper module which extends the functionality of the Python \textit{lldb} module.
+
+This module offers support for:
+\begin{itemize}
+\item \textbf{Printing the current frame as assembly code in a format which highlights what the linker and loader do}. For example, it displays the instruction addresses as \textit{<function-name + offset>} and points out the calls to the \textit{.plt} stubs for function with comments.
+\item \textbf{Printing the current frame as C source code}. This is useful for users who are not familiar with assembly code.
+\item \textbf{Returning the program counter from a frame.}
+\item \textbf{Obtaining symbol information.} For example, the name of the containing module.
+\item \textbf{Finding all the functions with stubs in the \textit{.plt}.} These are the only ones relevant to the process of dynamic linking and loading.
+\item \textbf{Reading Global Offset Table entries.}
+\item \textbf{Providing information about shared libraries} mapped in the program memory (modules).
+\item \textbf{Creating breakpoints for the functions with stubs in the \textit{.plt} exclusively}. These breakpoints are set on the first instruction in the function stub. The call to the function, identified by the previous instruction, can be viewed by printing the previous frame.
+\item \textbf{Creating breakpoints for \textit{dlopen}, \textit{dlsym}, \textit{dlclose} calls}. Tracing these functions is useful for observing the dynamic loading process.
+\item \textbf{Execution handling}: run, continue, step. This limits the points where the program is stopped to events of interest for the linker and loader.
+\item \textbf{Printing of the shared libraries mapped in the program address space}.
+\item \textbf{Accessing the Standard Input and Standard Output of the target executable}.
+\item \textbf{Writing a data word to a given memory location within the program}. This is particularly useful for exemplifying a simple \textit{.got hijack} where the \textit{.got.plt} pointer is replaced with a custom address, usually to insert a hook for the function. The hook itself runs before actually calling the function. 
+\end{itemize}
+
+The main advantage of isolating the above functionality in a stand-alone module is that it is independent of the current application and can be imported in other projects as well. The background thread aggregates the wrapper module and interacts with it by calling its methods.
+
+\section{Problems Encountered}
+\label{sec:problems}
+
+Implementing the features described above was straight-forward in general. Using the Python language simplified the coding phase, whereas the existing functionality of \textit{lldb} and PySide covered most of the needs of the application. Below I will provide details about the main issues encountered while working on this project.
+
+\subsection{Application Structure}
+\label{sub-sec:structure-prob}
+
+The main issue is structuring the application in such a manner that it is properly designed and easy to understand. This is extremely important for sharing the code with other collaborators and further work on the project. The background thread needs to handle both interaction with the debugger instance and communication with the \gui\ . For this reason its methods tend to perform several disjoint tasks which ultimately leads to a bad design.
+
+This problem was solved by refactoring the code in several steps:
+\begin{itemize}
+\item Firstly, I created a function for each purpose.
+\item Then I removed unnecessary or duplicate code.
+\item Static data which needed to be shared across modules was made static within its corresponding class.
+\item Callback methods were set for events such as hitting breakpoints.
+\end{itemize}
+
+\subsection{Setting Breakpoints}
+\label{sub-sec:breakpoints-prob}
+
+Another problem was setting breakpoints based on the function names in the \textit{.plt} section. When setting a breakpoint on a function name, \textit{lldb} sets the breakpoint on the symbol of the function. This means that several instructions must be executed before the actual code of the \textit{.plt} stub is called which are irrelevant to the process of linking and loading and only confuses the user.
+
+The solution was to set the breakpoints on the first instruction in the \textit{.plt} stub for the specified function. However, this skips the call to the \textit{.plt} stub, which might confuse the user. To make the process clearer, an intermediate step was introduced on breakpoint hit. It first shows the previous frame, where the call is made from, and only then moves on to the actual frame, which is the \textit{.plt} stub one.
+
+\subsection{Control Flow}
+\label{sub-sec:crontrol-flow-prob}
+
+A constant issue was making the control flow of the program as clear as possible to the user. A setback in this sense was the fact that skipping the calls to the dynamic linker did not allow the program to return to the point where the \textit{.plt} stub was invoked, but rather skip directly to the next breakpoint, if any. Based on the feedback received, this makes the process unclear for the user.
+
+The problem was solved by setting additional breakpoints on the next instruction after each call to the \textit{.plt} stubs. The address of this instruction is obtained by getting the instruction pointer from the previous frame immediately after entering the \textit{.plt} stub.
+
+Another control flow issue comes from blocking functions. The debugger instruments a target executable by skipping between breakpoints with a call to \textit{continue}. The \gui\ is updated only after the \textit{continue} call returns. If a blocking call is intercepted between two breakpoints, the \gui\ will not be updated and the user must first unblock the ELF executable before the \project\ debugger resumes execution. This is unclear for the user. One possible solution is to completely remove the call to \textit{continue} and gradually \textit{step in} the program, instruction after instruction, and update the \gui\ after each step. However this may introduce overhead in the application and consume system resources. This issue has not been addressed yet.
+
+\section{Lessons Learned}
+\label{sec:lessons-learned}
+
+The problems described above emphasise the importance of a clean implementation which makes it easier to modify the code without breaking the existing functionality. Each module should be written with the idea of 'Do one thing well!' in mind and the methods should respect a 'single purpose' principle, rather than aggregate as much functionality as possible.
+
+The most important conclusion is that feedback on the application should be a top priority as only the user can give valuable insight on what is unclear or complicated. The \project\ tool has an educational purpose and should be entirely developed based on user experience in order to effectively serve its purpose.

@@ -1,0 +1,74 @@
+\chapter{Motivation and Objectives}
+\label{chapter:motiv_obj}
+
+\section{Motivation}
+\label{sec:motivation}
+
+The tools described in the previous section allow visualisation of the linking and loading processes as long as the user is aware of what needs to be followed. There are two main drawbacks of the usage of debuggers as a means to understand linking and loading. The first is that debuggers do not highlight any process in particular. They are tools with no purpose until the user gives them one. The second is that debuggers are very complex and offer a multitude of functions. This discourages inexperienced users from using them.
+
+\subsection{Tutorial Based Approach}
+\label{sub-sec:tutorial-approach}
+
+Firstly, stepping in a debugger is not particularly useful for somebody who first encounters these concepts and needs a hand-on application to fully grasp what is happening at each stage.
+
+Take for example the calls to the function \textit{printf} which has the code located in the shared library \textit{libc}:
+\begin{itemize}
+\item In order to set a breakpoint, the user must have knowledge that the dynamic linker steps in at the first call of this function.
+\item After this, the user must correctly identify in the assembly code the address for the \textit{.plt} section entry of the function \textit{printf}. This is where the code jumps next.
+\item At this point, knowledge of what the \textit{.plt} code is doing is imperative: first there is a jump to a function pointer in the \textit{.got.plt} section. On the first call, this point leads back to the \textit{.plt} section and the dynamic linker is invoked. On the second call, the linker will have modified the pointer value to the correct address of the \textit{printf} procedure in its corresponding shared library, which is \textit{the Standard C Library}.
+\end{itemize}
+
+The steps described above are illustrated in \labelindexref{Figure}{img:LPL-flow}. They highlight how the loader and linker make use of lazy procedure linking which was described in \labelindexref{Section}{sub-sec:lazy-proc-link}.
+\fig[scale=0.5]{src/img/LPL-flow.pdf}{img:LPL-flow}{Function call and lazy procedure linking}
+
+Therefore, debuggers cannot be used as a learning tool properly, as they do not offer pointers as to what is happening in the linking and loading processes. Previous knowledge is required.
+
+\subsection{Complexity of Command Line Debuggers}
+\label{sub-sec:complex-cmd-dbg}
+
+Secondly, in order to use specific debuggers, the user must be accustomed to their functionality. Both \textit{gdb} and \textit{lldb} have a wide range of commands which make them very powerful tools, at the cost of user experience.
+
+Prior to using them, one must learn what the proper commands are for what is intended, as well as what to understand from the output returned. For an inexperienced user whose goal is to understand the mechanics of dynamic linking and loading, this can be a time consuming and unnecessary process.
+
+Moreover, using the debugger can prove cumbersome even for a user who is well accustomed to its functionality so long as the purpose is to simply observe the job of the linker and loader.
+
+Debuggers are designed to be powerful and versatile tools which let the user decide what task they should be used for. They do not offer specific complex functionality, but rather provide a set of means to achieve that functionality.
+
+\section{Objectives}
+\label{sec:objectives}
+
+The preceding section underlines the issues with the existing approaches to understanding how the dynamic loader and linker work. Despite providing extensive functionality, debuggers are not a solution to the specific problem of inspecting the dynamic linker and loader, but rather a possible workaround. 
+
+This project aims to fill the need for a dedicated solution for analysing the dynamic linking and loading processes. \project\ is a tool which provides full functionality for exploring dynamic linking and loading after an ELF executable is launched. It consists of two major parts:
+\begin{itemize}
+\item an extension to the \textit{lldb} python module which implements dedicated methods for analysing the behaviour of the dynamic linker and loader;
+\item a user-friendly graphical interface which isolates the necessary functionality for interacting with the program during dynamic linking and loading;
+\end{itemize}
+
+\subsection{Extend LLDB Functionality for Dynamic Linker and Loader Inspection}
+\label{sub-sec:lldb-extension}
+
+The \textit{lldb} extension module is a wrapper over the python \textit{lldb} module. It provides functionality for:
+\begin{itemize}
+\item Instrumenting a target ELF executable (eg. running, setting breakpoints)
+\item Retrieving and encapsulating data from the \textit{.plt} and \textit{.got.plt} sections.
+\item Offering information about the modules mapped in the program address space. (eg. shared libraries)
+\item Tracing dynamic loading calls. (eg. on Linux systems these are \textit{dlopen, dlclose, dlsym})
+\item Modifying custom memory locations.
+\end{itemize}
+
+The module is independent of the rest of the project and can be reused easily.
+
+\subsection{Create a Graphical User Interface}
+\label{sub-sec:gui}
+
+The user interface essentially provides the same information as the \textit{lldb} or \textit{gdb} debuggers. However, the data is retrieved through the \textit{lldb} wrapper module and displayed on an easy to read interface in a descriptive format. This eliminates the need for direct interaction between the user and the command line debugger. Thus, the focus shifts to the content, rather than the form.
+
+Moreover, the interface serves the user with a mechanism to control the execution flow of the target: adding breakpoints, continuing execution, restarting. However, the initial functionality of  a debugger is substantially reduced and adapted to fit the specific needs of investigating the dynamic linker and loader. For example, a user is not allowed to use the \textit{step instruction} command in order to avoid following code irrelevant to the dynamic linking and loading process. Rather, the \textit{step instruction} command is modified to continue to the next point of interest for analysing what the dynamic linker and loader do.
+
+It is important that the distinction between dynamic linking and dynamic loading is clear to the user. In \labelindexref{Section}{sub-sec:linkers-and-loaders} I described how the two processes have intertwined tasks during the load and runtime stages of an executable. Presenting both modes simultaneously is confusing and does not help the user gain detailed understanding of each process individually. For this reason the \gui\ offers two different inspection modes: one for understanding dynamic linking and the lazy binding mechanism and one for highlighting the key points of dynamic loading. The \gui\ has a simple and similar aspect for both modes in order to maintain user-friendliness.
+
+\subsection{Objectives Summary}
+\label{sub-sec:objective-summ}
+
+To sum up, the main objective of this thesis is to introduce an easy to use tool which benefits two category of users: those who aim to understand the functionality of a loader and those who want the functionality of a loader isolated. The tool is called \project\ .

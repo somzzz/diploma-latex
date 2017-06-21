@@ -1,0 +1,59 @@
+\chapter{Use Cases}
+\label{chapter:use-cases}
+
+The \project\ tool is focused on providing an enhanced experience for observing the dynamic loading and linking processes. In order to clearly distinguish between dynamic loading and dynamic linking, it offers two different inspection modes: \textit{Dynamic Linking / Lazy Binding Inspector} and \textit{Dynamic Loading Inspector}.
+
+\section{Inspection of Dynamic Linking / Lazy Binding}
+\label{sec:dyn-link-inspector-mode}
+
+The \textit{Dynamic Linking / Lazy Binding Inspector} mode follows the steps the program takes in order to make a call to a function from a shared library. A complete use scenario of the mode is detailed below:
+
+\begin{enumerate}
+\item The user opens the tool and reads helpful information from the \textit{Help Section}.
+\item The user loads an executable of his choice. The tool makes sure the executable has the correct format and displays a proper notification if not.
+\item The user starts the program. Execution is paused upon entering the main function.
+\item The user chooses a function from a shared library to set a breakpoint on. A list of such functions from the given executable is presented to him. The program sets the breakpoint and displays a proper notification.
+\item The user continues the program execution until the next breakpoint is reached. The breakpoint corresponds to a call to a function from a shared library. The user continues execution into the corresponding \textit{.plt} stub. The user can view the contents of the \textit{.got.plt} table. The inital function pointer indicates back to the next instruction in the \textit{.plt}.
+\item The user continues execution and the dynamic linker is invoked. The pointer from the \textit{.got.plt} changes to the actual function address. After the function call, the user continues execution and returns to the caller context.
+\item The user continues to the next call to the function. The program enter the \textit{.plt} stub again and jumps to the address of the pointer from \textit{.got.plt}. The actual function is called directly, without use of the dynamic linker. The user reads the descriptive messages from the console and observes how and when the \textit{.got.plt} table content changes.
+\item The user sees where the shared libraries are mapped into the memory of the program and can easily trace where the current instruction is. For example, while executing the code from the function \textit{printf} the user sees the instruction pointer is in the code section of the \textit{Standard C Library}.
+\item The user can change the value of the \textit{.got.plt} pointer for the function. This gives insight about how altering the address modifies the program control flow. On the next call, the code from the address introduced by the user is executed, rather than the actual routine.
+\end{enumerate}
+
+The use case for this inspection mode comprises the following functionality:
+\begin{enumerate}
+\item Visualisation of the shared libraries required by target executable, including their offset within the address space.
+\item Instrumentation of the dynamic loading and linking process which can be detailed into:
+\begin{enumerate}
+\item Setting breakpoints for a function which makes a call to a shared library.
+\item Displaying the \textit{.plt} stub at the point of each call to the function. 
+\item Displaying the \textit{.got.plt} entry for the given function. It represents the pointer to the procedure in the shared library.
+\item Basic stepping in the trampoline code until the linker (\textit{ld.so}\footnote{\url{http://man7.org/linux/man-pages/man8/ld.so.8.html}}) is called.
+\end{enumerate}
+\item Displaying the detailed program memory map: shared libraries and executable sections.
+\item \textit{GOT Hijacking} simulation by modifying the \textit{.got.plt} content.
+\end{enumerate}
+
+\section{Inspection of Dynamic Loading}
+\label{sec:dyn-load-inspector-mode}
+
+The \textit{Dynamic Loader Inspector} mode traces user calls to the dynamic loading mechanism. On Linux systems these calls are represented by the C functions provided by the \textit{dlfcn} header\footnote{\url{http://pubs.opengroup.org/onlinepubs/7908799/xsh/dlfcn.h.html}}.
+
+A standard use scenario corresponds to the following steps:
+\begin{enumerate}
+\item The user opens the tool and reads helpful information from the \textit{Help Section}.
+\item The user loads an executable of his choice. The tool makes sure the executable has the correct format and displays a proper notification if not.
+\item The user starts the program. Execution is paused upon entering the main function.
+\item Breakpoints are automatically set on calls to \textit{dlopen}, \textit{dlsym} and \textit{dlclose}.
+\item On a \textit{dlopen} breakpoint, the user is informed that a new shared library has been mapped in the address space. The user looks at the table of modules mapped in the program memory and recognizes the new dynamically loaded library. He also sees the first and last address where it has been mapped.
+\item On a \textit{dlsym} breakpoint, the user is informed of the symbol name and corresponding address returned by the \textit{dlsym} function.
+\item On a \textit{dlclose} breakpoint, the user is informed that the shared library has been removed from the address space. The user looks at the table of modules mapped in the program memory and notices it has been removed.
+\end{enumerate}
+
+The use case for this mode comprises the following functionality:
+\begin{enumerate}
+\item Tracing \textit{dlopen}, \textit{dlsym} and \textit{dlclose} calls within the executable and displaying the information described in the previous points.
+\item Displaying a simplified program memory map: shared libraries and executable, with the occupied address range and their size in bytes.
+\end{enumerate}
+
+For each of the modes described above, the inspection tool provides the user with detailed information regarding all the steps of the linking and loading process. It offers guidelines as to what is being acted upon, why it is being done and when it is required.
